@@ -184,20 +184,37 @@ function PingTabs({ ping, status, onRefresh }) {
 					id="ping-panel"
 					role="tabpanel"
 					aria-labelledby={`ping-tab-${active}`}
-					className="paper-tile mt-3 flex flex-wrap items-center justify-between gap-4 rounded-md p-4"
+					className="paper-tile mt-3 rounded-md p-4"
 				>
-					<div>
-						<div className="font-display text-lg font-medium text-foreground">{selected.name}</div>
-						<div className="mt-0.5 text-sm text-muted-foreground">{selected.url}</div>
-					</div>
-					<div className="text-right">
-						<div className={cn('font-display text-2xl font-medium tabular-nums', latencyTone(selected.latencyMs))}>
-							{selected.latencyMs != null ? `${selected.latencyMs} ms` : '—'}
+					<div className="flex flex-wrap items-center justify-between gap-4">
+						<div>
+							<div className="font-display text-lg font-medium text-foreground">{selected.name}</div>
+							<div className="mt-0.5 text-sm text-muted-foreground">{selected.url}</div>
 						</div>
-						<div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-							{pingStatusLabel(selected)}
+						<div className="text-right">
+							<div className={cn('font-display text-2xl font-medium tabular-nums', latencyTone(selected.latencyMs))}>
+								{selected.latencyMs != null ? `${selected.latencyMs} ms` : '—'}
+							</div>
+							<div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+								{pingStatusLabel(selected)}
+							</div>
 						</div>
 					</div>
+					<p className="mt-3 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
+						{selected.timedOut ? (
+							<>No response came back within 5 seconds of sending the request.</>
+						) : !selected.ok ? (
+							<>The request itself couldn't be sent — likely blocked offline or by a browser extension.</>
+						) : (
+							<>
+								Measured as the time from sending an HTTP <code className="text-foreground/80">HEAD</code>{' '}
+								request to your browser receiving a response, right now, from this device. It reflects the
+								full path — your ISP, routing, and the target's server — not just distance, so it isn't a
+								traditional ICMP ping and can differ from tools like <code className="text-foreground/80">ping</code>{' '}
+								in a terminal.
+							</>
+						)}
+					</p>
 				</div>
 			)}
 		</div>

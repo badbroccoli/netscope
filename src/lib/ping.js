@@ -18,6 +18,17 @@ const PING_TARGETS = [
 
 const TIMEOUT_MS = 5000;
 
+// Every "Re-ping" must actually round-trip to each target again, never
+// reuse a cached hit from an earlier click (or an earlier tab that visited
+// that site). `cache: 'no-store'` skips the HTTP cache outright, and the
+// `_=<timestamp>` query param makes each request URL unique so no cache
+// layer along the way can dedupe it. `credentials: 'omit'` guarantees no
+// cookies are sent to (or stored from) any of these third-party sites.
+function withCacheBust(url) {
+	const separator = url.includes('?') ? '&' : '?';
+	return `${url}${separator}_=${Date.now()}`;
+}
+
 async function pingOne(target) {
 	const start = performance.now();
 	const controller = new AbortController();
@@ -25,10 +36,12 @@ async function pingOne(target) {
 	try {
 		// `no-cors` lets the request complete without a CORS-allow header from
 		// the target (the response body/status is opaque, but the timing is real).
-		await fetch(target.url, {
+		await fetch(withCacheBust(target.url), {
 			method: 'HEAD',
 			mode: 'no-cors',
 			cache: 'no-store',
+			credentials: 'omit',
+			referrerPolicy: 'no-referrer',
 			redirect: 'follow',
 			signal: controller.signal,
 		});

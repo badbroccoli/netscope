@@ -47,6 +47,15 @@ GitHub Pages only serves static files, so all lookups happen **directly from the
 
 If you need exact reverse DNS or true server-side latency, you'd reintroduce a small backend (e.g. Cloudflare Workers, a Vercel/Render function) and point `networkInfo.js`/`ping.js` at it instead — the UI already expects the same data shape those modules return.
 
+### "Re-scan" / "Re-ping" are always genuinely fresh
+
+Clicking either button is guaranteed to hit the network again, not replay something cached:
+
+- Every request is sent with `cache: 'no-store'` and a `_=<timestamp>` cache-busting query param, so neither the browser's HTTP cache nor an intermediate CDN can serve a stale hit.
+- Every request is sent with `credentials: 'omit'`, so no cookies are ever sent to, or stored from, ipwho.is/geojs.io/ipapi.co/ipify.org or any of the ping targets. (Cross-origin `fetch` calls never include this site's cookies by default anyway — this just makes it explicit and impossible to accidentally change.)
+- Clicking either button also clears this site's own cookies/`localStorage`/`sessionStorage` first (`src/lib/clearLocalState.js`) — a no-op today since NetScope doesn't set any, kept as a guardrail if that ever changes.
+- Third-party cookies belonging to *other* origins (e.g. one Google already set in your browser) can't be read or cleared by this page's JavaScript — that's the browser's same-origin policy, not a NetScope limitation.
+
 ## Local development
 
 Requirements: Node (version pinned in [`.nvmrc`](.nvmrc); use `nvm use` if you have nvm).

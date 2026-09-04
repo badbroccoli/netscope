@@ -14,6 +14,7 @@ import {
 	Signal,
 	Wifi,
 } from 'lucide-react';
+import { clearLocalTraces } from '@/lib/clearLocalState';
 import { getNetworkInfo } from '@/lib/networkInfo';
 import { getPingResults } from '@/lib/ping';
 import { cn } from '@/lib/utils';
@@ -177,6 +178,10 @@ export default function HomePage() {
 
 	const load = useCallback(async () => {
 		setStatus('loading');
+		// Start every scan (including the first) from a clean slate, then hit
+		// the network fresh — no cached response, no cookies in or out. See
+		// clearLocalState.js and networkInfo.js for exactly what that means.
+		clearLocalTraces();
 		try {
 			const payload = await getNetworkInfo();
 			setData(payload);
@@ -189,6 +194,7 @@ export default function HomePage() {
 
 	const loadPing = useCallback(async () => {
 		setPingStatus('loading');
+		clearLocalTraces();
 		try {
 			const payload = await getPingResults();
 			setPing(payload);

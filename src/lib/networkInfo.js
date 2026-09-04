@@ -12,16 +12,34 @@
 // ipwho.is's free plan shares a 1,000 requests/day quota across the whole
 // calling domain (not per visitor) when used via CORS, so a fallback chain
 // keeps the page useful even if that's exhausted.
-
+//
+// Every "Re-scan" must be a genuinely fresh lookup, not a cached one:
+// - `cache: 'no-store'` tells the browser to skip its HTTP cache entirely —
+//   no serving a stale response from disk/memory, no revalidation shortcuts.
+// - A `_=<timestamp>` cache-busting param makes each request URL unique, as
+//   a second line of defense against any intermediate cache (e.g. a CDN in
+//   front of a provider) that might ignore Cache-Control on repeat hits.
+// - `credentials: 'omit'` guarantees no cookies are ever sent to, or stored
+//   from, these third-party providers. Cross-origin fetches never include
+//   the browser's cookie jar by default anyway, but this makes it explicit
+//   and un-misconfigurable rather than relying on that default.
 const TIMEOUT_MS = 6000;
+
+function withCacheBust(url) {
+	const separator = url.includes('?') ? '&' : '?';
+	return `${url}${separator}_=${Date.now()}`;
+}
 
 async function fetchJson(url, { timeoutMs = TIMEOUT_MS } = {}) {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), timeoutMs);
 	try {
-		const response = await fetch(url, {
+		const response = await fetch(withCacheBust(url), {
 			signal: controller.signal,
 			headers: { Accept: 'application/json' },
+			cache: 'no-store',
+			credentials: 'omit',
+			referrerPolicy: 'no-referrer',
 		});
 		if (!response.ok) {
 			throw new Error(`Request failed with status ${response.status}`);

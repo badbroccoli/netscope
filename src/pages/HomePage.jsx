@@ -17,6 +17,7 @@ import {
 	Signal,
 	Wifi,
 } from 'lucide-react';
+import BadBroccoliMark from '@/components/BadBroccoliMark';
 import { clearLocalTraces } from '@/lib/clearLocalState';
 import { getNetworkInfo } from '@/lib/networkInfo';
 import { getPingResults } from '@/lib/ping';
@@ -426,7 +427,16 @@ export default function HomePage() {
 					{/* Pane header */}
 					<header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
 						<div>
-							<div className="font-display text-lg font-semibold uppercase tracking-[0.3em] text-foreground">
+							<a
+								href="https://github.com/badbroccoli"
+								target="_blank"
+								rel="noreferrer"
+								className="group inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground transition-colors hover:text-primary"
+							>
+								<BadBroccoliMark className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:-rotate-6" />
+								badbroccoli
+							</a>
+							<div className="mt-1.5 font-display text-lg font-semibold uppercase tracking-[0.3em] text-foreground">
 								Net<span className="text-primary">Scope</span>
 							</div>
 							<div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">

@@ -105,6 +105,14 @@ function latencyTone(ms) {
 	return 'text-destructive';
 }
 
+function pingStatusLabel(result) {
+	if (result.timedOut) return 'Timed out';
+	if (!result.ok) return 'Unreachable';
+	if (result.latencyMs < 120) return 'Fast';
+	if (result.latencyMs < 300) return 'Moderate';
+	return 'Slow';
+}
+
 function PingTabs({ ping, status, onRefresh }) {
 	const [active, setActive] = useState(0);
 
@@ -136,34 +144,62 @@ function PingTabs({ ping, status, onRefresh }) {
 
 	if (!ping) return null;
 
+	const selected = ping.results[active] ?? ping.results[0];
+
 	return (
-		<div className="flex flex-wrap gap-2" role="tablist" aria-label="Ping targets">
-			{ping.results.map((r, i) => (
-				<button
-					key={r.url}
-					type="button"
-					role="tab"
-					aria-selected={i === active}
-					onClick={() => setActive(i)}
-					className={cn(
-						'flex min-h-[40px] items-center gap-2 rounded-md border px-3.5 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors',
-						i === active
-							? 'border-primary bg-primary/15 text-primary'
-							: 'border-border bg-secondary text-secondary-foreground hover:border-primary/50 hover:text-primary',
-					)}
-				>
-					<span
+		<div>
+			<div className="flex flex-wrap gap-2" role="tablist" aria-label="Ping targets">
+				{ping.results.map((r, i) => (
+					<button
+						key={r.url}
+						id={`ping-tab-${i}`}
+						type="button"
+						role="tab"
+						aria-selected={i === active}
+						aria-controls="ping-panel"
+						onClick={() => setActive(i)}
 						className={cn(
-							'h-1.5 w-1.5 rounded-full',
-							r.ok ? 'bg-emerald-400' : r.timedOut ? 'bg-amber-400' : 'bg-destructive',
+							'flex min-h-[40px] items-center gap-2 rounded-md border px-3.5 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors',
+							i === active
+								? 'border-primary bg-primary/15 text-primary'
+								: 'border-border bg-secondary text-secondary-foreground hover:border-primary/50 hover:text-primary',
 						)}
-					/>
-					<span>{r.name}</span>
-					<span className={cn('tabular-nums', latencyTone(r.latencyMs))}>
-						{r.latencyMs != null ? `${r.latencyMs} ms` : '—'}
-					</span>
-				</button>
-			))}
+					>
+						<span
+							className={cn(
+								'h-1.5 w-1.5 rounded-full',
+								r.ok ? 'bg-emerald-400' : r.timedOut ? 'bg-amber-400' : 'bg-destructive',
+							)}
+						/>
+						<span>{r.name}</span>
+						<span className={cn('tabular-nums', latencyTone(r.latencyMs))}>
+							{r.latencyMs != null ? `${r.latencyMs} ms` : '—'}
+						</span>
+					</button>
+				))}
+			</div>
+
+			{selected && (
+				<div
+					id="ping-panel"
+					role="tabpanel"
+					aria-labelledby={`ping-tab-${active}`}
+					className="paper-tile mt-3 flex flex-wrap items-center justify-between gap-4 rounded-md p-4"
+				>
+					<div>
+						<div className="font-display text-lg font-medium text-foreground">{selected.name}</div>
+						<div className="mt-0.5 text-sm text-muted-foreground">{selected.url}</div>
+					</div>
+					<div className="text-right">
+						<div className={cn('font-display text-2xl font-medium tabular-nums', latencyTone(selected.latencyMs))}>
+							{selected.latencyMs != null ? `${selected.latencyMs} ms` : '—'}
+						</div>
+						<div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+							{pingStatusLabel(selected)}
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }

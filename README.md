@@ -13,7 +13,9 @@
 - **Approximate geolocation** — city/region/country, plotted on an OpenStreetMap embed
 - **Timezone** with a live local clock
 - **Connection flags** — mobile, proxy/VPN, data center, EU
-- **Ping probe** — approximate HTTP round-trip latency to Google, Cloudflare, GitHub, Amazon, Wikipedia, Microsoft, and Apple
+- **Ping probe** — approximate HTTP round-trip latency to Google, Cloudflare, GitHub, Amazon, Wikipedia, Microsoft, and Apple. Tabs are collapsed by default; click one to see its full URL, latency, and a plain-language status, click it again to fold it back.
+- **Speed test** — manual, on-demand download/upload throughput test (never runs automatically). Tabs are collapsed by default; click one to see its full URL, latency, and a plain-language status, click it again to fold it back.
+- **Speed test** — manual, on-demand download/upload throughput test (never runs automatically)
 
 ## Architecture
 
@@ -27,6 +29,7 @@ src/
 ├── lib/
 │   ├── networkInfo.js      # Client-side IP/geolocation lookup (multi-provider)
 │   ├── ping.js              # Client-side latency probe
+│   ├── speedTest.js         # Client-side download/upload throughput test (opt-in)
 │   ├── format.js / utils.js
 ├── components/              # UI components (shadcn/ui + a few custom ones)
 └── hooks/
@@ -38,6 +41,7 @@ GitHub Pages only serves static files, so all lookups happen **directly from the
 
 - **IP + geolocation** (`src/lib/networkInfo.js`) tries a chain of free, CORS-enabled, HTTPS providers in order — [ipwho.is](https://ipwhois.io/) → [geojs.io](https://www.geojs.io/) → [ipapi.co](https://ipapi.co/) → [ipify.org](https://www.ipify.org/) (IP only, last resort) — normalizing whichever one answers into a single shape. This keeps the page working even if one provider is down or rate-limited.
 - **Ping probe** (`src/lib/ping.js`) can't use real ICMP from a browser, and most target sites don't send CORS headers, so it times a `fetch(..., { mode: 'no-cors' })` request instead. The response body/status is opaque, but the round-trip really happens, so the timing is a solid latency proxy.
+- **Speed test** (`src/lib/speedTest.js`) hits [speed.cloudflare.com](https://speed.cloudflare.com)'s public `__down`/`__up` endpoints — the same keyless, CORS-enabled API that powers Cloudflare's own speed test page. Download is measured progressively by streaming the response body; upload times a single `POST` round trip. It's opt-in only (see below), never automatic.
 
 ### Known trade-offs of the static/client-side approach
 
@@ -55,6 +59,10 @@ Clicking either button is guaranteed to hit the network again, not replay someth
 - Every request is sent with `credentials: 'omit'`, so no cookies are ever sent to, or stored from, ipwho.is/geojs.io/ipapi.co/ipify.org or any of the ping targets. (Cross-origin `fetch` calls never include this site's cookies by default anyway — this just makes it explicit and impossible to accidentally change.)
 - Clicking either button also clears this site's own cookies/`localStorage`/`sessionStorage` first (`src/lib/clearLocalState.js`) — a no-op today since NetScope doesn't set any, kept as a guardrail if that ever changes.
 - Third-party cookies belonging to *other* origins (e.g. one Google already set in your browser) can't be read or cleared by this page's JavaScript — that's the browser's same-origin policy, not a NetScope limitation.
+
+### Speed test is opt-in, always
+
+Unlike network info and ping (which load automatically and re-run on "Re-scan"/"Re-ping"), the speed test **never runs on page load and never runs alongside anything else** — it only starts when you click "Run speed test." It moves ~30 MB of real data to measure throughput, which is a meaningfully different cost/privacy profile than the lightweight background lookups, so it's opt-in by design rather than bundled into the automatic scan.
 
 ## Local development
 

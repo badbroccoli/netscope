@@ -2,9 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import {
 	Activity,
+	ArrowDown,
+	ArrowUp,
 	Building2,
 	Check,
 	Copy,
+	Gauge,
 	Globe2,
 	Hash,
 	MapPin,
@@ -17,6 +20,7 @@ import {
 import { clearLocalTraces } from '@/lib/clearLocalState';
 import { getNetworkInfo } from '@/lib/networkInfo';
 import { getPingResults } from '@/lib/ping';
+import { runSpeedTest } from '@/lib/speedTest';
 import { cn } from '@/lib/utils';
 
 function LocalClock({ timeZone, utc }) {
@@ -114,7 +118,9 @@ function pingStatusLabel(result) {
 }
 
 function PingTabs({ ping, status, onRefresh }) {
-	const [active, setActive] = useState(0);
+	// `null` = every tab closed (the initial state, and the state you get back
+	// to by clicking the open tab again to fold it back up).
+	const [active, setActive] = useState(null);
 
 	if (status === 'loading') {
 		return (
@@ -144,7 +150,7 @@ function PingTabs({ ping, status, onRefresh }) {
 
 	if (!ping) return null;
 
-	const selected = ping.results[active] ?? ping.results[0];
+	const selected = active != null ? ping.results[active] : null;
 
 	return (
 		<div>
@@ -157,7 +163,7 @@ function PingTabs({ ping, status, onRefresh }) {
 						role="tab"
 						aria-selected={i === active}
 						aria-controls="ping-panel"
-						onClick={() => setActive(i)}
+						onClick={() => setActive((prev) => (prev === i ? null : i))}
 						className={cn(
 							'flex min-h-[40px] items-center gap-2 rounded-md border px-3.5 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors',
 							i === active
@@ -215,6 +221,115 @@ function PingTabs({ ping, status, onRefresh }) {
 							</>
 						)}
 					</p>
+				</div>
+			)}
+		</div>
+	);
+}
+
+function speedTone(mbps) {
+	if (mbps == null) return 'text-muted-foreground';
+	if (mbps >= 50) return 'text-emerald-400';
+	if (mbps >= 10) return 'text-amber-400';
+	return 'text-destructive';
+}
+
+function formatMbps(mbps) {
+	if (mbps == null) return '—';
+	return mbps >= 100 ? Math.round(mbps).toString() : mbps.toFixed(1);
+}
+
+function SpeedMeter({ icon: Icon, label, mbps, live }) {
+	return (
+		<div className="paper-tile flex items-center gap-3 rounded-md p-4">
+			<Icon className="h-4 w-4 shrink-0 text-primary" strokeWidth={2} />
+			<div>
+				<div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+					{label}
+				</div>
+				<div className={cn('font-display text-2xl font-medium tabular-nums', speedTone(mbps))}>
+					{formatMbps(mbps)} <span className="text-sm font-normal text-muted-foreground">Mbps</span>
+					{live && <span className="ml-2 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />}
+				</div>
+			</div>
+		</div>
+	);
+}
+
+// Speed test is opt-in only: it moves tens of megabits of real data, unlike
+// the lightweight background lookups elsewhere on the page, so it must never
+// run on load or piggyback on Re-scan/Re-ping. It only starts on a direct
+// button click, and every click is a fully fresh run (fresh state, fresh
+// request — see speedTest.js for the cache/credential handling).
+function SpeedTestPanel() {
+	const [status, setStatus] = useState('idle'); // idle | download | upload | done | error
+	const [downloadMbps, setDownloadMbps] = useState(null);
+	const [uploadMbps, setUploadMbps] = useState(null);
+
+	const start = useCallback(async () => {
+		setStatus('download');
+		setDownloadMbps(null);
+		setUploadMbps(null);
+		try {
+			const result = await runSpeedTest({
+				onDownloadProgress: (mbps) => setDownloadMbps(mbps),
+				onUploadProgress: (mbps) => {
+					setStatus('upload');
+					if (mbps != null) setUploadMbps(mbps);
+				},
+			});
+			setDownloadMbps(result.downloadMbps);
+			setUploadMbps(result.uploadMbps);
+			setStatus('done');
+		} catch {
+			setStatus('error');
+		}
+	}, []);
+
+	const isRunning = status === 'download' || status === 'upload';
+
+	return (
+		<div className="mt-10 border-t border-border pt-8">
+			<div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<div className="font-display text-xl font-semibold uppercase tracking-[0.18em] text-foreground">
+						Speed test
+					</div>
+					<div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+						Download &amp; upload throughput — run manually, on demand
+					</div>
+				</div>
+				<button
+					type="button"
+					onClick={start}
+					disabled={isRunning}
+					className="flex min-h-[44px] items-center gap-2 rounded-md border border-border bg-secondary px-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground transition-colors hover:border-primary/60 hover:text-primary active:scale-[0.98] disabled:opacity-50"
+				>
+					<Gauge className={cn('h-3.5 w-3.5', isRunning && 'animate-pulse')} strokeWidth={2} />
+					{status === 'idle' && 'Run speed test'}
+					{status === 'download' && 'Testing download…'}
+					{status === 'upload' && 'Testing upload…'}
+					{status === 'done' && 'Run again'}
+					{status === 'error' && 'Try again'}
+				</button>
+			</div>
+
+			{status === 'idle' && (
+				<p className="text-sm text-muted-foreground">
+					Not run yet. This moves real data (~30 MB) to measure throughput, so it only runs when you ask it to.
+				</p>
+			)}
+
+			{status === 'error' && (
+				<p className="text-sm text-destructive">
+					The speed test probe didn't respond. Check your connection and try again.
+				</p>
+			)}
+
+			{(isRunning || status === 'done') && (
+				<div className="grid gap-4 sm:grid-cols-2">
+					<SpeedMeter icon={ArrowDown} label="Download" mbps={downloadMbps} live={status === 'download'} />
+					<SpeedMeter icon={ArrowUp} label="Upload" mbps={uploadMbps} live={status === 'upload'} />
 				</div>
 			)}
 		</div>
@@ -525,6 +640,8 @@ export default function HomePage() {
 							</div>
 							<PingTabs ping={ping} status={pingStatus} onRefresh={loadPing} />
 						</div>
+
+						<SpeedTestPanel />
 
 						{/* Pane footer */}
 							<footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">

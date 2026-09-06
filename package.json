@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"private": true,
 	"type": "module",
-	"description": "NetScope — a static single-page app that shows your public IP address, network/ISP details, approximate location, and live latency to popular websites.",
+	"description": "NetScope — a static single-page app that shows your public IP address, network/ISP details, approximate location, live latency, and DNS/WebRTC leak tests.",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/badbroccoli/netscope.git"

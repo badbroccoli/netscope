@@ -18,6 +18,8 @@ import {
 	Wifi,
 } from 'lucide-react';
 import BadBroccoliMark from '@/components/BadBroccoliMark';
+import DnsLeakPanel from '@/components/DnsLeakPanel';
+import WebrtcLeakPanel from '@/components/WebrtcLeakPanel';
 import { clearLocalTraces } from '@/lib/clearLocalState';
 import { getNetworkInfo } from '@/lib/networkInfo';
 import { getPingResults } from '@/lib/ping';
@@ -411,7 +413,7 @@ export default function HomePage() {
 				<title>NetScope — Your IP Address & Network Intelligence</title>
 				<meta
 					name="description"
-					content="Detect your public IP address and see your full network profile — location, ISP, ASN, timezone and an interactive map — in one glass pane."
+					content="Detect your public IP address and see your full network profile — location, ISP, ASN, timezone, DNS and WebRTC leak tests, and an interactive map — in one glass pane."
 				/>
 			</Helmet>
 
@@ -650,6 +652,10 @@ export default function HomePage() {
 							</div>
 							<PingTabs ping={ping} status={pingStatus} onRefresh={loadPing} />
 						</div>
+
+						<DnsLeakPanel />
+
+						<WebrtcLeakPanel publicIp={data.ip} />
 
 						<SpeedTestPanel />
 

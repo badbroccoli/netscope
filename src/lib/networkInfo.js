@@ -203,6 +203,25 @@ const PROVIDERS = [
 	{ url: 'https://api.ipify.org?format=json', normalize: normalizeIpify },
 ];
 
+// Same chain as above, but for a *specific* IP (used by the WebRTC and DNS
+// leak tests to label resolver / STUN-mapped addresses with ISP/region).
+// ipify is omitted — it only returns the caller's IP, not a lookup of an
+// arbitrary address.
+const LOOKUP_PROVIDERS = [
+	{
+		url: (ip) => `https://ipwho.is/${encodeURIComponent(ip)}`,
+		normalize: normalizeIpWhoIs,
+	},
+	{
+		url: (ip) => `https://get.geojs.io/v1/ip/geo/${encodeURIComponent(ip)}.json`,
+		normalize: normalizeGeoJs,
+	},
+	{
+		url: (ip) => `https://ipapi.co/${encodeURIComponent(ip)}/json/`,
+		normalize: normalizeIpApiCo,
+	},
+];
+
 export async function getNetworkInfo() {
 	const errors = [];
 	for (const provider of PROVIDERS) {
@@ -216,4 +235,21 @@ export async function getNetworkInfo() {
 		}
 	}
 	throw new Error(`All network-info providers failed:\n${errors.join('\n')}`);
+}
+
+// Best-effort geo/ISP for an already-known IP. Returns null instead of
+// throwing — a failed lookup shouldn't fail the leak tests themselves.
+export async function lookupIpInfo(ip) {
+	if (!ip) return null;
+	for (const provider of LOOKUP_PROVIDERS) {
+		try {
+			const data = await fetchJson(provider.url(ip));
+			const info = provider.normalize(data);
+			if (!info.ip) throw new Error('Provider returned no IP');
+			return info;
+		} catch {
+			// try the next provider
+		}
+	}
+	return null;
 }
